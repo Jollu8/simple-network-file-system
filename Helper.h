@@ -75,3 +75,4 @@ Recv_msg_t recv_message_client(int sock_fd) {
 }
 
 
+Recv_msg_t recv_message_server(int sock_fd);
