@@ -211,7 +211,7 @@ public:
 
     std::vector<DirEntry<FileInode>> get_file_inode_entries();
 
-    std::vector<DirEntry<DirInode>> get_inode_entries();
+    std::vector<DirEntry<DirInode>> get_dir_inode_entries();
 
     void add_entry(DirEntry<FileInode> entry);
 
@@ -263,7 +263,7 @@ class DirEntry {
 public:
     DirEntry(std::string name, T inode);
 
-    std::string get_name;
+    std::string get_name();
 
     T get_inode();
 
