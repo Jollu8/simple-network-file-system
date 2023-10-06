@@ -68,6 +68,7 @@ Recv_msg_t recv_message_client(int sock_fd) {
             break;
         } else {
             perror("Error while receiving message from socket ");
+            close(sock_fd);
             return msg;
         }
     }
@@ -77,5 +78,27 @@ Recv_msg_t recv_message_client(int sock_fd) {
 
 Recv_msg_t recv_message_server(int sock_fd) {
     Recv_msg_t msg;
+    msg.quit = false;
+    char temp_buff[65535] = {};
+    int size;
+    while (true) {
+        size = recv(sock_fd, temp_buff, sizeof(temp_buff), 0);
+        if (size > 0) {
+            for (auto i = 0; i < size; ++i) msg.message += temp_buff[i];
+            size_t endPos = msg.message.find("\n");
+            if (endPos == std::string::npos) continue;
+            break;
+
+
+        } else if (size == 0) {
+            msg.quit = true;
+            break;
+        } else {
+            perror("Error while receiving message from socket");
+            close(sock_fd);
+            return msg;
+        }
+    }
+    return msg;
 
 }
