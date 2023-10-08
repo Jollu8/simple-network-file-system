@@ -39,7 +39,12 @@ namespace Wrapped_space {
             return "502 File exist";
         }
     };
-
+    class NotAFileException : public FilesSystemException {
+    public:
+        const char *what() const throw() {
+            return "501 File is a directory";
+        }
+    };
     class FileNotFoundException : public FilesSystemException {
     public:
         const char *what() const throw() {
