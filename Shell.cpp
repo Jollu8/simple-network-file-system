@@ -12,9 +12,14 @@
 #include <unordered_map>
 
 
+
 //my headers;
 #include "Helper.h"
 #include "Shell.h"
+
+
+//macros
+
 
 static const std::string PROMPT_STRING = "NFS";
 const std::string endline = "\n";
@@ -226,8 +231,17 @@ bool Shell::execute_command(std::string command_str) {
             break;
         }
         case E_HEAD: {
+#if 0
+            auto do_ = [&] {
+                std::cerr << "Invalid command line: " << command.append_data;
+                std::cerr << " is not a valid number of bytes" << std::endl;
+                return false;
+            };
+#endif
             errno = 0;
             unsigned long n = strtoul(command.append_data.c_str(), nullptr, 0);
+
+
             if (errno == 0) head_rpc(command.append_data, n);
             else {
 
@@ -253,3 +267,91 @@ bool Shell::execute_command(std::string command_str) {
     return false;
 }
 
+void Shell::network_command(std::string message, bool can_be_empty) {
+    std::string formatted_message = message + endline;
+    send_message(this->cs_sock, formatted_message);
+    Recv_msg_t msg = recv_message_client(this->cs_sock);
+    if (msg.quit) {
+        std::cout << "Server has closed the connection" << std::endl;
+        exit(1);
+    }
+    std::string response = msg.message;
+
+    std::string code, length, body;
+    size_t lenPos = response.find("\n");
+    code = response.substr(0, lenPos);
+    size_t bodyPos = response.find("\n", lenPos + 2);
+    length = response.substr(lenPos + 2, bodyPos);
+    body = response.substr(bodyPos + 4);
+
+    std::string output = body;
+    if (body.size() == 0 && (code != "200 OK"))
+        // Некоторые серверы полагаются на то, что клиент отобразит "success", а не пошлет
+        // его через сокет. В этом случае
+        output = std::string("success");
+    std::cout << output << std::endl;
+
+}
+
+// Разбирает командную строку в структуру command. Возвращаемое имя является пустым
+// для недопустимых командных строк.
+
+Command Shell::parse_command(std::string command_str) {
+    Command empty = {"", "", ""};
+    Command command;
+    std::istringstream ss(command_str);
+    int num_tokens = 0;
+    if (ss >> command.file_name) {
+        ++num_tokens;
+        if (ss >> command.file_name) {
+            ++num_tokens;
+            if (ss >> command.append_data) {
+                ++num_tokens;
+                std::string junk;
+                if (ss >> junk) ++num_tokens;
+            }
+        }
+    }
+    if (num_tokens == 0) return empty;
+    auto print_error = [&] {
+        std::cerr << "Invalid command line: " << command.name;
+        std::cerr << " has improper number of arguments" << std::endl;
+
+    };
+
+    auto is_valid_empty_command = [&] {
+        if (command.name == "ls" || command.name == "home" || command.name == "quit") return 1;
+        if (command.name == "mkdir" ||
+            command.name == "cd" ||
+            command.name == "rmdir" ||
+            command.name == "create" ||
+            command.name == "cat" ||
+            command.name == "rm" ||
+            command.name == "stat")
+            return 2;
+        if (command.name == "append" || command.name == "head") return 3;
+
+    }();
+    switch (is_valid_empty_command) {
+        case 1: {
+            if (num_tokens != 1) print_error();
+            return empty;
+
+        }
+        case 2: {
+            if (num_tokens != 2) print_error();
+            return empty;
+
+        }
+        case 3: {
+            if (num_tokens != 3) print_error();
+            return empty;
+
+        }
+        default: {
+            print_error();
+            return empty;
+        }
+    }
+
+}
