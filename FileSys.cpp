@@ -2,6 +2,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <cmath>
+#include <algorithm>
 // my headers;
 
 #include "FileSys.h"
@@ -196,4 +197,121 @@ void FileSys::append(const char *name, const char *data) {
         throw;
     }
 }
+
+void FileSys::cat(const char *name) {
+    const unsigned int MAX_FILE_SIZE_local = MAX_DATA_BLOCKS * BLOCK_SIZE;
+    this->head(name, MAX_FILE_SIZE_local);
+}
+
+void FileSys::head(const char *name, unsigned int n) {
+    std::string file_name = name;
+    auto working_dir = this->get_working_dir();
+    for (auto &entry: working_dir.get_dir_inode_entries())
+        if (entry.get_name() == name)
+            throw Wrapped_space::NotAFileException();
+
+    for (auto &entry: working_dir.get_file_inode_entries())
+        if (entry.get_name() == name) {
+            auto file = entry.get_inode();
+
+            if (file.get_size() <= 0) {
+                response_ok(std::string() + '\n');
+                return;
+            }
+            unsigned int size_to_get = std::min(file.get_size(), n);
+            int num_blocks_to_get = floor(size_to_get / BLOCK_SIZE);
+            int additional_bytes_to_get = size_to_get % BLOCK_SIZE;
+
+            if (num_blocks_to_get > file.get_blocks().size())
+                std::cerr << "FileSys::head num_blocks_to_get > file.get_blocks().size()" << std::endl;
+            std::string response;
+            for (auto i = 0; i < num_blocks_to_get; ++i) {
+                auto dataBlock = file.get_blocks().at(i);
+                for (auto datum: dataBlock.get_data()) response += datum;
+
+
+            }
+            if (additional_bytes_to_get > 0 && file.get_blocks().size() > num_blocks_to_get) {
+                auto dataBlock = file.get_blocks().at(num_blocks_to_get);
+                for (auto i = 0; i < additional_bytes_to_get; ++i) response += dataBlock.get_data().at(i);
+            }
+            response_ok(response + '\n');
+            return;
+        }
+    throw Wrapped_space::FileNotFoundException();
+}
+
+void FileSys::rm(const char *name) {
+    auto working_dir = this->get_working_dir();
+    for(auto &entry : working_dir.get_dir_inode_entries()) if(entry.get_name() == name)throw Wrapped_space::NotAFileException();
+
+    for(auto &entry : working_dir.get_file_inode_entries()) {
+        if(entry.get_name() == name) {
+            auto file = entry.get_inode();
+            auto dataBlocks = file.get_blocks();
+            working_dir.remove_entry(entry);
+            file.destroy();
+            for_each(dataBlocks.begin(), dataBlocks.end(), [](auto &a) {
+                a.destroy();
+            });
+            response_ok();
+            return;
+        }
+    }
+    throw Wrapped_space::FileNotFoundException();
+}
+
+
+void FileSys::stat(const char *name) {
+    std::string file_name = name;
+    auto working_dir = this->get_working_dir();
+    for_each(working_dir.get_file_inode_entries().begin(), working_dir.get_file_inode_entries().end(),[&] (DirEntry<FileInode> &entry) {
+        auto file = entry.get_inode();
+        std::string message;
+        auto blocks = file.get_blocks();
+        message.append("Inode block");
+        message.append(std::to_string(file.get_id()) + '\n');
+        message.append("Bytes in file: ");
+        message.append(std::to_string(file.get_size()) + '\n');
+        message.append("Number of blocks: ");
+        message.append(std::to_string(blocks.size() + 1) + '\n');
+        message.append("First block: ");
+        if(blocks.size() > 0) message.append(std::to_string(blocks[0].get_id()));
+        else message.append("0");
+
+        response_ok(message);
+        return ;
+    });
+    throw Wrapped_space::FileNotFoundException();
+}
+
+void FileSys::set_working_dir(DirInode dir) {
+    this->curr_dir = dir.get_id();
+
+}
+
+DirInode FileSys::get_working_dir() {
+    return DirInode(this->curr_dir);
+}
+
+void FileSys::response_ok(std::string message) {
+    std::string formatted_message = format_response("200 OK", message);
+    send_message(this->fs_sock, formatted_message);
+}
+
+void validate_before_new_entry(DirInode dir, std::string name) {
+    if(name.size()  > MAX_F_NAME_SIZE)throw Wrapped_space::FileNameTooLongException();
+
+    if(!dir.has_free_entry())throw Wrapped_space::DirFullException();
+
+    for_each(dir.get_dir_inode_entries().begin(), dir.get_dir_inode_entries().end(), [&](DirEntry<DirInode>&entry) {
+        if(entry.get_name() == name) throw Wrapped_space::FileExistsException();
+    });
+
+    for_each(dir.get_file_inode_entries().begin(), dir.get_file_inode_entries().end(), [&](DirEntry<FileInode>&entry) {
+        if(entry.get_name() == name) throw Wrapped_space::FileExistsException();
+    });
+
+}
+
 

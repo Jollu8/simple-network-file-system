@@ -10,11 +10,10 @@
 #include <sstream>
 #include <unistd.h>
 
-using namespace std::string_literals;
 
 std::string format_response(std::string code, std::string message) {
-    const std::string endline = "\n"s;
-    std::string full_response = code + endline + "Length"s + std::to_string(message.size()) + endline + message;
+    const std::string endline = "\n";
+    std::string full_response = code + endline + "Length" + std::to_string(message.size()) + endline + message;
     return full_response;
 }
 

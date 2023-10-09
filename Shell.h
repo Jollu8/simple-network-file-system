@@ -18,6 +18,7 @@ struct Command {
 
 class Shell {
 public:
+    void mountNFS(std::string fs_loc);
     void unmountNFS();
 
     void run();
