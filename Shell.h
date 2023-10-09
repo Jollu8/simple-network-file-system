@@ -8,7 +8,10 @@
 #include <netdb.h>
 #include <unistd.h>
 
-
+enum ENUM_COMMANDS {
+    E_EMPTY , E_MKDIR, E_CD, E_HOME, E_RMDIR, E_LS, E_CREATE, E_APPEND, E_CAT, E_HEAD, E_RM,
+    E_STAT, E_QUIT
+};
 struct Command {
     std::string name;
     std::string file_name;
@@ -55,7 +58,7 @@ private:
 
     void rm_rpc(std::string f_name);
 
-    void start_rpc(std::string f_name);
+    void stat_rpc(std::string f_name);
 
     void network_command(std::string message, bool can_be_empty);
 
