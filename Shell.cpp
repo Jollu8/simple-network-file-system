@@ -319,7 +319,7 @@ Command Shell::parse_command(std::string command_str) {
 
     };
 
-    auto is_valid_empty_command = [&] {
+    auto is_valid_empty_command = [&]() ->int  {
         if (command.name == "ls" || command.name == "home" || command.name == "quit") return 1;
         if (command.name == "mkdir" ||
             command.name == "cd" ||
