@@ -230,7 +230,8 @@ unsigned int DirInode::get_num_entries() {
 std::vector<DirEntry<FileInode>> DirInode::get_file_inode_entries() {
     return this->file_entries;
 }
-std::vector<DirEntry<DirInode>>DirInode::get_dir_inode_entries() {
+
+std::vector<DirEntry<DirInode>> DirInode::get_dir_inode_entries() {
     return this->dir_entries;
 }
 
@@ -238,18 +239,20 @@ void DirInode::add_entry(DirEntry<DirInode> entry) {
     this->add_entry_base(entry, this->dir_entries);
 
 }
+
 void DirInode::add_entry(DirEntry<FileInode> entry) {
     this->add_entry_base(entry, this->file_entries);
 }
 
-template<typename T> void DirInode::add_entry_base(DirEntry<T> entry, std::vector<DirEntry<T>> &vec) {
+template<typename T>
+void DirInode::add_entry_base(DirEntry<T> entry, std::vector<DirEntry<T>> &vec) {
     Dir_t tempRaw = this->get_raw();
     bool written = false;
-    for(auto i = 0; i < MAX_DIR_ENTRIES; ++i) {
-        if(tempRaw.dir_entries[i].block_num != UNUSED_ID) continue;
+    for (auto i = 0; i < MAX_DIR_ENTRIES; ++i) {
+        if (tempRaw.dir_entries[i].block_num != UNUSED_ID) continue;
         tempRaw.dir_entries[i].block_num = entry.get_inode().get_id();
         int name_size = std::min(int(entry.get_name().size()), MAX_F_NAME_SIZE);
-        for(auto j = 0; j < name_size; ++j) {
+        for (auto j = 0; j < name_size; ++j) {
             tempRaw.dir_entries[i].name[j] = entry.get_name()[j];
         }
 
@@ -258,7 +261,7 @@ template<typename T> void DirInode::add_entry_base(DirEntry<T> entry, std::vecto
         written = true;
         break;
     }
-    if(!written) {
+    if (!written) {
         throw Wrapped_space::DirFullException();
     }
     this->write_and_set_block(tempRaw);
@@ -268,21 +271,65 @@ template<typename T> void DirInode::add_entry_base(DirEntry<T> entry, std::vecto
 void DirInode::remove_entry(DirEntry<DirInode> entry) {
     this->remove_entry_base(entry, this->dir_entries);
 }
+
 void DirInode::remove_entry(DirEntry<FileInode> entry) {
     this->remove_entry_base(entry, this->file_entries);
 }
 
-template<typename T> void DirInode::remove_entry_base(DirEntry<T> entry, std::vector<DirEntry<T>> &vec) {
+template<typename T>
+void DirInode::remove_entry_base(DirEntry<T> entry, std::vector<DirEntry<T>> &vec) {
     short block_id = entry.get_inode().get_id();
     Dir_t tempRaw = this->get_raw();
 
     int index = 0;
-    for(auto i = 0; i < MAX_DIR_ENTRIES; ++i) {
-        if(tempRaw.dir_entries[i].block_num == block_id) {
+    for (auto i = 0; i < MAX_DIR_ENTRIES; ++i) {
+        if (tempRaw.dir_entries[i].block_num == block_id) {
             index = i;
             break;
         }
     }
+    if (index == -1) {
+        std::cerr << "ERROR (DirInode::remove_entry):DirEntry for Block #" << block_id
+                  << " was not found the Dir Inode #" << this->get_id() << "." << std::endl;
+        throw Wrapped_space::FilesSystemException();
+    }
+    for (auto i = index; i < MAX_DATA_BLOCKS; ++i) tempRaw.dir_entries[i] = tempRaw.dir_entries[i + 1];
+    tempRaw.dir_entries[MAX_DIR_ENTRIES - 1].block_num = UNUSED_ID;
+
+    tempRaw.num_entries--;
+    this->num_entries = tempRaw.num_entries;
+    vec.erase(std::remove_if(vec.begin(), vec.end(), [&](DirEntry<T> &curr_entry) -> bool {
+        return curr_entry.get_inode().get_id() == block_id;
+    }), vec.end());
+    this->write_and_set_block(tempRaw);
+
 }
+
+bool DirInode::has_free_entry() {
+    return (MAX_DIR_ENTRIES - this->get_num_entries() > 0);
+}
+
+// =============================================================================
+// ------------------------------- DIR ENTRY -----------------------------------
+// =============================================================================
+
+template<typename T>
+DirEntry<T>::DirEntry(std::string name, T inode) {
+    this->name = name;
+    this->inode_id = inode.get_id();
+    if (name.size() > MAX_F_NAME_SIZE) throw Wrapped_space::FileNameTooLongException();
+
+}
+
+template<typename T>
+std::string DirEntry<T>::get_name() {
+    return this->name;
+}
+
+template<typename T>
+T DirEntry<T>::get_inode() {
+    return T(this->inode_id);
+}
+
 
 
