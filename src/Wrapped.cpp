@@ -145,7 +145,7 @@ void FileInode::remove_block(DataBlock block) {
     Inode_t tempRaw = this->get_raw();
     int index = -1;
     for (auto i = 0; i < MAX_DATA_BLOCKS; ++i) {
-        if (tempRaw.blocks[i] = block_id) {
+        if (tempRaw.blocks[i] == block_id) {
             index = 1;
             break;
         }

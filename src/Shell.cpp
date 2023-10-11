@@ -14,8 +14,8 @@
 
 
 //my headers;
-#include "Helper.h"
-#include "Shell.h"
+#include "../header/Helper.h"
+#include "../header/Shell.h"
 
 
 //macros
@@ -319,39 +319,36 @@ Command Shell::parse_command(std::string command_str) {
 
     };
 
-    auto is_valid_empty_command = [&]() ->int  {
-        if (command.name == "ls" || command.name == "home" || command.name == "quit") return 1;
-        if (command.name == "mkdir" ||
-            command.name == "cd" ||
-            command.name == "rmdir" ||
-            command.name == "create" ||
-            command.name == "cat" ||
-            command.name == "rm" ||
-            command.name == "stat")
-            return 2;
-        if (command.name == "append" || command.name == "head") return 3;
-
-    }();
-    switch (is_valid_empty_command) {
-        case 1: {
-            if (num_tokens != 1) print_error();
-            return empty;
-
-        }
-        case 2: {
-            if (num_tokens != 2) print_error();
-            return empty;
-
-        }
-        case 3: {
-            if (num_tokens != 3) print_error();
-            return empty;
-
-        }
-        default: {
+    // Check for invalid command lines
+    if (command.name == "ls" ||
+        command.name == "home" ||
+        command.name == "quit") {
+        if (num_tokens != 1) {
             print_error();
             return empty;
         }
+    } else if (command.name == "mkdir" ||
+               command.name == "cd" ||
+               command.name == "rmdir" ||
+               command.name == "create" ||
+               command.name == "cat" ||
+               command.name == "rm" ||
+               command.name == "stat") {
+        if (num_tokens != 2) {
+            print_error();
+            return empty;
+        }
+    } else if (command.name == "append" || command.name == "head") {
+        if (num_tokens != 3) {
+            print_error();
+            return empty;
+        }
+    } else {
+        print_error();
+        return empty;
     }
 
+    return command;
 }
+
+
