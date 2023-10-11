@@ -7,6 +7,6 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(${PROJECT_SOURCE_DIR}/../header)
 
 # Указываем CMake где искать исходные файлы
-file(GLOB SOURCES Wrapped.cpp "*.cpp")
+file(GLOB SOURCES Wrapped.cpp Shell.cpp Basic.cpp Wrapped.cpp Helper.cpp FileSys.cpp Disk.cpp)
 
 add_library(NFS ${SOURCES})

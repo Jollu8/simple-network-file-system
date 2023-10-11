@@ -4,7 +4,7 @@
 #include "Basic.h"
 
 void Basic::mount() {
-    bool new_disk = disk.mount("DISK");
+    bool new_disk = disk.mount("jollu");
     if (!new_disk) return;
     Super_t super_block;
     super_block.bitmap[0] = 0x3;
