@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <sstream>
 #include <netdb.h>
+#include <unordered_map>
 
 
 //my headers;
@@ -34,6 +35,19 @@ enum CommandType {
     invalid
 
 };
+std::unordered_map<std::string, CommandType> my_Commands_map{
+        {"home",   home},
+        {"mkdir",  mkdir},
+        {"ls",     ls},
+        {"cd",     cd},
+        {"rmdir",  rmdir_cmd},
+        {"create", create},
+        {"append", append},
+        {"stat",   stat},
+        {"cat",    cat},
+        {"head",   head},
+        {"rm",     rm}
+};
 
 
 struct Command {
@@ -46,22 +60,18 @@ sockaddr_in get_server_addr(in_port_t port);
 
 Command parse_command(const std::string &message);
 
-void exec_command(int sock_fd, FileSys &fs, Command &command);
+void exec_command(int sock_fd, FileSys &fs, Command command);
 
 void response_error(std::string message);
 
-extern std::string format_response(std::string coe, std::string message);
+extern std::string format_response(std::string code, std::string message);
 
 extern void send_message(int sock_fd, std::string message);
 
-struct Recv_msg_server_t {
-    std::string message;
-    bool quit;
-
-};
 
 
-extern Recv_msg_server_t recvMsgServer(int sock_fd);
+
+extern Recv_msg_t recv_message_server(int sock_fd);
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -102,11 +112,11 @@ int main(int argc, char *argv[]) {
             }
             FileSys fs;
             fs.mount(new_sockfd);
-            Recv_msg_server_t msg;
+            Recv_msg_t msg;
             msg.quit = false;
             while (!msg.quit) {
                 try {
-                    msg = recvMsgServer(new_sockfd);
+                    msg = recv_message_server(new_sockfd);
                     if (msg.quit) break;
                     std::string message = msg.message;
                     Command command = parse_command(message);
@@ -133,7 +143,7 @@ int main(int argc, char *argv[]) {
 sockaddr_in get_server_addr(in_port_t port) {
     sockaddr_in server_addr;
     bzero((char *) &server_addr, sizeof(server_addr));
-    server_addr.sin_family - PF_INET;
+    server_addr.sin_family = PF_INET;
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     return server_addr;
@@ -141,7 +151,7 @@ sockaddr_in get_server_addr(in_port_t port) {
 }
 
 
-void exec_command(int socket_fd, FileSys &fs, Command &command) {
+void exec_command(int sock_fd, FileSys &fs, Command command) {
     CommandType type = command.type;
     const char *file = command.file.c_str();
     const char *data = command.file.c_str();
@@ -187,7 +197,90 @@ void exec_command(int socket_fd, FileSys &fs, Command &command) {
     catch (const Wrapped_space::FilesSystemException &e) {
         std::string err_msg = e.what();
         std::string formatted_message = format_response(err_msg, "");
-        send_message(socket_fd, formatted_message);
+        send_message(sock_fd, formatted_message);
     }
 }
+
+Command parse_command(const std::string &message) {
+    Command cmd;
+    std::istringstream ss(message);
+    std::string name;
+    int token = 0;
+    if (ss >> name) {
+        ++token;
+        if (ss >> cmd.file) ++token;
+        if (ss >> cmd.data)++token;
+        std::string garbage;
+        if (ss >> garbage) ++token;
+    }
+    switch (my_Commands_map.find(name)->second) {
+        case mkdir:
+            cmd.type = mkdir;
+            break;
+        case ls:
+            cmd.type = ls;
+            break;
+        case cd:
+            cmd.type = cd;
+            break;
+        case home:
+            cmd.type = home;
+            break;
+        case rmdir_cmd:
+            cmd.type = rmdir_cmd;
+            break;
+        case create:
+            cmd.type = create;
+            break;
+        case append:
+            cmd.type = append;
+            break;
+        case stat:
+            cmd.type = stat;
+            break;
+        case cat:
+            cmd.type = cat;
+            break;
+        case head:
+            cmd.type = head;
+            break;
+        case rm:
+            cmd.type = rm;
+            break;
+        default: {
+            if (token == 0)cmd.type = noop;
+            else {
+                cmd.type = invalid;
+                cmd.data = "Invalid command: " + message;
+            }
+            break;
+        }
+    }
+
+    CommandType type = cmd.type;
+    if (type == ls || type == home || type == quit) {
+        if (token != 1) {
+            cmd.type = invalid;
+            cmd.data = "Invalid command: not enough arguments. Requires 1 token";
+        }
+    } else if (type == mkdir ||
+               type == cd ||
+               type == rmdir_cmd ||
+               type == create ||
+               type == cat ||
+               type == rm ||
+               type == stat) {
+        if (token != 2) {
+            cmd.type = invalid;
+            cmd.data = "Invalid command: not enough arguments. Requires 2 tokens";
+        }
+    } else if (type == append || type == head)
+        if (token != 3) {
+            cmd.type = invalid;
+            cmd.data = "Invalid command: not enough arguments. Requires 3 tokens";
+        }
+    return cmd;
+}
+
+
 

@@ -1,13 +1,16 @@
 cmake_minimum_required(VERSION 3.23)
 project(NFS)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
 
 add_subdirectory(src)
 
 add_executable(nfsserver Server.cpp)
-add_executable(nfsclient src/Shell.cpp Client.cpp)
+target_link_libraries(nfsserver NFS)
+
+add_executable(nfsclient  Client.cpp)
+target_link_libraries(nfsclient NFS)
 
 add_custom_command(TARGET nfsserver POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E remove -f DISK)

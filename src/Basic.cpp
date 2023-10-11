@@ -24,3 +24,48 @@ void Basic::mount() {
 
 
 }
+
+void Basic::unmount() {
+    disk.unmount();
+
+}
+
+short Basic::get_free_block() {
+    Super_t super_block_t;
+    disk.read_block(0, (void *) &super_block_t);
+
+    for (auto byte = 0; byte < BLOCK_SIZE; ++byte) {
+        if (super_block_t.bitmap[byte] != 0xFF) {
+            for (int bit = 0; bit < 8; ++bit) {
+                int mask = 1 << bit;
+                if (mask & ~super_block_t.bitmap[byte]) {
+                    super_block_t.bitmap[byte] |= mask;
+                    disk.write_block(0, (void *) &super_block_t);
+                    return (byte * 8) + bit;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+void Basic::reclaim_block(short block_num) {
+    Super_t super_block;
+    disk.read_block(0, (void *) &super_block);
+    int byte = block_num / 8;
+    int bit = block_num % 8;
+    unsigned char mask = ~(1 << bit);
+    super_block.bitmap[byte] &= mask;
+    disk.write_block(0, (void *) &super_block);
+
+}
+
+void Basic::read_block(short block_num, void *block) {
+    disk.read_block(block_num, block);
+
+}
+
+void Basic::write_block(short block_num, void *block) {
+    disk.write_block(block_num, block);
+
+}

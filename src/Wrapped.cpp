@@ -6,7 +6,7 @@
 
 
 namespace Wrapped_space {
-    Basic *fbs;
+    Basic *fbs = new Basic() ;
 }
 
 // =============================================================================
