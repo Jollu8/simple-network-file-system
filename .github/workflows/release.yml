@@ -26,8 +26,6 @@ jobs:
         working-directory: build
         run: ctest
 
-      - name: Install
-        run:  make install .
 
       - name: Package
         run: cpack
