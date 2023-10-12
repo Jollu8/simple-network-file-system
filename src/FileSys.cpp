@@ -131,7 +131,7 @@ void FileSys::append(const char *name, const char *data) {
     int original_total_size = file.get_size();
 
     int new_total_size = file.get_size() + data_str.size();
-    int new_total_blocks = ceil(double(new_total_size) / BLOCK_SIZE);
+    int new_total_blocks = std::ceil(double(new_total_size) / BLOCK_SIZE);
     if (new_total_size > MAX_DATA_BLOCKS)throw Wrapped_space::FileFullException();
 
     unsigned int frag_size = file.internal_frag_size();
@@ -213,7 +213,7 @@ void FileSys::head(const char *name, unsigned int n) {
                 return;
             }
             unsigned int size_to_get = std::min(file.get_size(), n);
-            int num_blocks_to_get = floor(size_to_get / BLOCK_SIZE);
+            int num_blocks_to_get = std::floor(size_to_get / BLOCK_SIZE);
             auto additional_bytes_to_get = size_to_get % BLOCK_SIZE;
 
             if (num_blocks_to_get > file.get_blocks().size())

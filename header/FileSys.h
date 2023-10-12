@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstring>
 #include <string>
+#include <cmath>
 #include "Wrapped.h"
 #include "Helper.h"
 
