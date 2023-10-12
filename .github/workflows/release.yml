@@ -27,7 +27,7 @@ jobs:
         run: ctest
 
       - name: Install
-        run:  make install
+        run:  make install .
 
       - name: Package
         run: cpack
