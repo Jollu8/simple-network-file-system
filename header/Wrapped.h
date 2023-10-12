@@ -19,7 +19,7 @@ const short HOME_DIR_ID = 1;
 
 
 namespace Wrapped_space {
-     Basic *bfs{};
+     inline Basic *bfs;
 
     class FilesSystemException : public std::exception {
     public:

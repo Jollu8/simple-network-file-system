@@ -1,21 +1,22 @@
 // Реализует команды файловой системы, доступные оболочке.
-#include <iostream>
-#include <unistd.h>
-#include <cmath>
-#include <algorithm>
-#include <utility>
+
 #pragma once
 // my headers;
-
+#include <iterator>
+#include <iostream>
+#include <algorithm>
+#include <cstring>
+#include <string>
 #include "Wrapped.h"
 #include "Helper.h"
+
 
 class FileSys {
 public:
     // mounts the file system
     void mount(int sock);
 
-    // unmounts the file system
+    // unmounts the file syste
     void unmount();
 
     // make a directory
