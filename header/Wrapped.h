@@ -15,19 +15,22 @@
 
 const short UNUSED_ID = 0;
 const short HOME_DIR_ID = 1;
+
+
+
 namespace Wrapped_space {
-    extern Basic *bfs;
+     Basic *bfs{};
 
     class FilesSystemException : public std::exception {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "A File system error has occurred!";
         }
     };
 
     class NotADirException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        const char *what() const noexcept override {
             return "500 File is not a directory";
 
         }
@@ -35,21 +38,21 @@ namespace Wrapped_space {
 
     class FileExistsException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "502 File exist";
         }
     };
 
     class NotAFileException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "501 File is a directory";
         }
     };
 
     class FileNotFoundException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "503 File does not exist";
 
         }
@@ -57,35 +60,35 @@ namespace Wrapped_space {
 
     class FileNameTooLongException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "504 File name is too long";
         }
     };
 
     class DiskFullException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "505 Disk is full";
         }
     };
 
     class DirFullException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "506 Directory is full";
         }
     };
 
     class DirNotEmptyException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "507 Directory is not empty";
         }
     };
 
     class FileFullException : public FilesSystemException {
     public:
-        const char *what() const throw() {
+        [[nodiscard]] const char *what() const noexcept override {
             return "508 Append exceeds maximum file size";
         }
 
@@ -101,9 +104,10 @@ class Block {
 // чтения и записи "сырых" структур с диска и на диск. Он представляет собой класс
 // шаблон, позволяющий использовать различные типы "сырых" структур (например, `inode_t`).
 public:
-    Block(short id);
+    explicit Block(short id);
 
     Block();
+
 
     T get_raw();
 
@@ -114,7 +118,7 @@ public:
     }
 
 protected:
-    short id;
+    short id{};
     T raw;
 
     void write_and_set_block(T block);
@@ -125,13 +129,14 @@ protected:
 // =============================================================================
 class DataBlock : public Block<Data_t> {
 public:
-    DataBlock(short id);
+    explicit DataBlock(short id);
 
-    DataBlock(std::array<char, BLOCK_SIZE> &data);
+    explicit DataBlock(std::array<char, BLOCK_SIZE> &data);
+
 
     std::array<char, BLOCK_SIZE> get_data();
 
-    void set_data(std::array<char, BLOCK_SIZE> data);
+    void set_data(std::array<char, BLOCK_SIZE> data_);
 
     using Block<Data_t>::get_raw;
     using Block<Data_t>::get_id;
@@ -141,7 +146,7 @@ protected:
     // размер данных из структуры data_t (некоторые биты блока данных могут быть
     // неиспользуемыми).
     // Мои благодарности Константину Владимирову на этот совет
-    std::array<char, BLOCK_SIZE> data;
+    std::array<char, BLOCK_SIZE> data{};
 };
 
 
@@ -152,7 +157,7 @@ protected:
 template<typename T>
 class Inode : protected Block<T> {
 public:
-    Inode(short id);
+    explicit Inode(short id);
 
     Inode();
 
@@ -166,7 +171,7 @@ public:
     using Block<T>::get_id;
     using Block<T>::destroy;
 protected:
-    unsigned int magic;
+    unsigned int magic{};
 
 };
 
@@ -175,11 +180,11 @@ protected:
 // =============================================================================
 class FileInode : public Inode<Inode_t> {
 public:
-    FileInode(short id);
+    explicit FileInode(short id);
 
     FileInode();
 
-    unsigned int get_size();
+    unsigned int get_size() const;
 
     std::vector<DataBlock> get_blocks();
 
@@ -187,11 +192,11 @@ public:
 
     void remove_block(DataBlock block);
 
-    void set_size(unsigned int size);
+    void set_size();
 
     bool has_free_block();
 
-    unsigned int internal_frag_size();
+    unsigned int internal_frag_size() const;
 
 protected:
     unsigned int size;
@@ -210,11 +215,11 @@ class DirEntry;
 
 class DirInode : public Inode<Dir_t> {
 public:
-    DirInode(short id);
+    explicit DirInode(short id);
 
     DirInode();
 
-    unsigned int get_num_entries();
+    unsigned int get_num_entries() const;
 
     std::vector<DirEntry<FileInode>> get_file_inode_entries();
 
@@ -231,7 +236,18 @@ public:
 
     void remove_entry(DirEntry<DirInode> entry);
 
-    bool has_free_entry();
+
+
+    [[nodiscard]] bool has_free_entry() const;
+
+
+
+
+
+
+
+
+
 
 protected:
     // Файловые и Dir-Inode хранятся отдельно, поскольку векторы могут содержать только // один тип (даже если они имеют общий базовый класс).
@@ -268,7 +284,7 @@ template<typename T>
 class DirEntry {
     // static_assert(is_base_of<Inode<T>, T>::value, "DirEntry must be used with an Inode");
 public:
-    DirEntry(std::string name, T inode);
+    DirEntry(const std::string& name, T inode);
 
     std::string get_name();
 
@@ -276,7 +292,7 @@ public:
 
 protected:
     std::string name;
-    short inode_id;
+    short inode_id{};
 
 };
 

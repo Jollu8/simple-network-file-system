@@ -1,13 +1,12 @@
 #include <algorithm>
-#include <array>
+
+#include <utility>
 
 //my headers;
 #include "Wrapped.h"
 
 
-namespace Wrapped_space {
-   Basic *fbs = new Basic() ;
-}
+
 
 // =============================================================================
 // ------------------------------- BLOCK ---------------------------------------
@@ -60,11 +59,11 @@ std::array<char, BLOCK_SIZE> DataBlock::get_data() {
     return this->data;
 }
 
-void DataBlock::set_data(std::array<char, BLOCK_SIZE> data) {
-    Data_t tempRaw;
-    for (auto i = 0; i < data.size(); i++) tempRaw.data[i] = data[i];
+void DataBlock::set_data(std::array<char, BLOCK_SIZE> data_) {
+    Data_t tempRaw{};
+    for (auto i = 0; i < data_.size(); i++) tempRaw.data[i] = data_[i];
     this->write_and_set_block(tempRaw);
-    this->data = data;
+    this->data = data_;
 }
 
 
@@ -101,25 +100,24 @@ FileInode::FileInode(short id) : Inode(id) {
     this->magic = this->raw.magic;
     this->size = this->raw.size;
 
-    for (auto i = 0; i < MAX_DATA_BLOCKS; ++i) {
-        short block_id = this->raw.blocks[i];
+    for (short block_id: this->raw.blocks) {
         if (block_id != UNUSED_ID) this->blocks.emplace_back(DataBlock(block_id));
     }
 }
 
 FileInode::FileInode() : Inode<Inode_t>() {
-    Inode_t tempRaw;
+    Inode_t tempRaw{};
     tempRaw.magic = INODE_MAGIC_NUM;
     tempRaw.size = 0;
-    for (auto i = 0; i < MAX_DATA_BLOCKS; ++i)
-        tempRaw.blocks[i] = UNUSED_ID;
+    for (short &block: tempRaw.blocks)
+        block = UNUSED_ID;
     this->write_and_set_block(tempRaw);
     this->magic = tempRaw.magic;
     this->size = tempRaw.size;
 
 }
 
-unsigned int FileInode::get_size() {
+unsigned int FileInode::get_size() const {
     return this->size;
 }
 
@@ -128,9 +126,9 @@ std::vector<DataBlock> FileInode::get_blocks() { return this->blocks; }
 void FileInode::add_block(DataBlock block) {
     Inode_t tempRaw = this->get_raw();
     bool written = false;
-    for (auto i = 0; i < MAX_DATA_BLOCKS; i++) {
-        if (tempRaw.blocks[i] != UNUSED_ID)continue;
-        tempRaw.blocks[i] = block.get_id();
+    for (short &i: tempRaw.blocks) {
+        if (i != UNUSED_ID)continue;
+        i = block.get_id();
         written = true;
         break;
     }
@@ -144,8 +142,8 @@ void FileInode::remove_block(DataBlock block) {
     auto block_id = block.get_id();
     Inode_t tempRaw = this->get_raw();
     int index = -1;
-    for (auto i = 0; i < MAX_DATA_BLOCKS; ++i) {
-        if (tempRaw.blocks[i] == block_id) {
+    for (short block_: tempRaw.blocks) {
+        if (block_ == block_id) {
             index = 1;
             break;
         }
@@ -163,9 +161,8 @@ void FileInode::remove_block(DataBlock block) {
     this->write_and_set_block(tempRaw);
 }
 
-void FileInode::set_size(unsigned int size) {
+void FileInode::set_size() {
     Inode_t tempRaw = this->get_raw();
-    tempRaw.size = size;
     this->write_and_set_block(tempRaw);
     this->size = tempRaw.size;
 }
@@ -174,7 +171,7 @@ bool FileInode::has_free_block() {
     return MAX_DATA_BLOCKS - this->blocks.size() > 0;
 }
 
-unsigned int FileInode::internal_frag_size() {
+unsigned int FileInode::internal_frag_size() const {
     return this->size % BLOCK_SIZE;
 }
 
@@ -189,11 +186,11 @@ DirInode::DirInode(short id) : Inode(id) {
     }
     this->magic = this->raw.magic;
     this->num_entries = this->raw.num_entries;
-    for (auto i = 0; i < MAX_DIR_ENTRIES; ++i) {
-        char *name = this->raw.dir_entries[i].name;
-        short block_id = this->raw.dir_entries[i].block_num;
+    for (auto &dir_entrie: this->raw.dir_entries) {
+        char *name = dir_entrie.name;
+        short block_id = dir_entrie.block_num;
         if (block_id == UNUSED_ID)continue;
-        Inode inode = Inode(block_id);
+        auto inode = Inode(block_id);
         if (inode.is_file()) {
             FileInode fileInode(block_id);
             DirEntry<FileInode> entry(name, fileInode);
@@ -212,17 +209,17 @@ DirInode::DirInode(short id) : Inode(id) {
 }
 
 DirInode::DirInode() : Inode() {
-    Dir_t tempRaw;
+    Dir_t tempRaw{};
     tempRaw.magic = DIR_MAGIC_NUM;
     tempRaw.num_entries = 0;
-    for (auto i = 0; i < MAX_DIR_ENTRIES; ++i) tempRaw.dir_entries[i].block_num = UNUSED_ID;
+    for (auto &dir_entrie: tempRaw.dir_entries) dir_entrie.block_num = UNUSED_ID;
 
     this->write_and_set_block(tempRaw);
     this->magic = tempRaw.magic;
     this->num_entries = tempRaw.num_entries;
 }
 
-unsigned int DirInode::get_num_entries() {
+unsigned int DirInode::get_num_entries() const {
     return this->num_entries;
 
 }
@@ -236,27 +233,27 @@ std::vector<DirEntry<DirInode>> DirInode::get_dir_inode_entries() {
 }
 
 void DirInode::add_entry(DirEntry<DirInode> entry) {
-    this->add_entry_base(entry, this->dir_entries);
+    this->add_entry_base(std::move(entry), this->dir_entries);
 
 }
 
 void DirInode::add_entry(DirEntry<FileInode> entry) {
-    this->add_entry_base(entry, this->file_entries);
+    this->add_entry_base(std::move(entry), this->file_entries);
 }
 
 template<typename T>
 void DirInode::add_entry_base(DirEntry<T> entry, std::vector<DirEntry<T>> &vec) {
     Dir_t tempRaw = this->get_raw();
     bool written = false;
-    for (auto i = 0; i < MAX_DIR_ENTRIES; ++i) {
-        if (tempRaw.dir_entries[i].block_num != UNUSED_ID) continue;
-        tempRaw.dir_entries[i].block_num = entry.get_inode().get_id();
+    for (auto &dir_entries_: tempRaw.dir_entries) {
+        if (dir_entries_.block_num != UNUSED_ID) continue;
+        dir_entries_.block_num = entry.get_inode().get_id();
         int name_size = std::min(int(entry.get_name().size()), MAX_F_NAME_SIZE);
         for (auto j = 0; j < name_size; ++j) {
-            tempRaw.dir_entries[i].name[j] = entry.get_name()[j];
+            dir_entries_.name[j] = entry.get_name()[j];
         }
 
-        tempRaw.dir_entries[i].name[name_size] = '\0';
+        dir_entries_.name[name_size] = '\0';
         tempRaw.num_entries++;
         written = true;
         break;
@@ -269,11 +266,11 @@ void DirInode::add_entry_base(DirEntry<T> entry, std::vector<DirEntry<T>> &vec) 
 }
 
 void DirInode::remove_entry(DirEntry<DirInode> entry) {
-    this->remove_entry_base(entry, this->dir_entries);
+    this->remove_entry_base(std::move(entry), this->dir_entries);
 }
 
 void DirInode::remove_entry(DirEntry<FileInode> entry) {
-    this->remove_entry_base(entry, this->file_entries);
+    this->remove_entry_base(std::move(entry), this->file_entries);
 }
 
 template<typename T>
@@ -305,7 +302,7 @@ void DirInode::remove_entry_base(DirEntry<T> entry, std::vector<DirEntry<T>> &ve
 
 }
 
-bool DirInode::has_free_entry() {
+bool DirInode::has_free_entry() const {
     return (MAX_DIR_ENTRIES - this->get_num_entries() > 0);
 }
 
@@ -314,7 +311,7 @@ bool DirInode::has_free_entry() {
 // =============================================================================
 
 template<typename T>
-DirEntry<T>::DirEntry(std::string name, T inode) {
+DirEntry<T>::DirEntry(const std::string &name, T inode) {
     this->name = name;
     this->inode_id = inode.get_id();
     if (name.size() > MAX_F_NAME_SIZE) throw Wrapped_space::FileNameTooLongException();

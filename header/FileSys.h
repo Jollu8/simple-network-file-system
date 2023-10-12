@@ -1,10 +1,14 @@
 // Реализует команды файловой системы, доступные оболочке.
-
+#include <iostream>
+#include <unistd.h>
+#include <cmath>
+#include <algorithm>
+#include <utility>
 #pragma once
 // my headers;
 
-#include "Basic.h"
 #include "Wrapped.h"
+#include "Helper.h"
 
 class FileSys {
 public:
@@ -48,7 +52,7 @@ public:
     void stat(const char *name);
 
 private:
-    Basic bfs; // basic file system
+   Basic bfs; // basic file system
     short curr_dir;   // current directory
 
     int fs_sock; // file server socket
@@ -57,7 +61,7 @@ private:
 
     void set_working_dir(DirInode dir);
 
-    DirInode get_working_dir();
+    [[nodiscard]] DirInode get_working_dir() const;
 
-    void response_ok(std::string message = "success");
+    void response_ok(const std::string& message = "success") const;
 };

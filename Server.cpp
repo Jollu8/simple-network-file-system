@@ -1,12 +1,11 @@
 #include <iostream>
 #include <string>
-#include <iostream>
+
 #include <cstdlib>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <sstream>
-#include <netdb.h>
+
 #include <unordered_map>
 
 
@@ -50,7 +49,7 @@ std::unordered_map<std::string, CommandType> my_Commands_map{
 };
 
 
-struct Command {
+struct Command_ {
     CommandType type;
     std::string file;
     std::string data;
@@ -58,20 +57,20 @@ struct Command {
 
 sockaddr_in get_server_addr(in_port_t port);
 
-Command parse_command(const std::string &message);
+Command_ parse_command(const std::string &message);
 
-void exec_command(int sock_fd, FileSys &fs, Command command);
+void exec_command(int sock_fd, FileSys &fs, const Command_& command);
 
 void response_error(std::string message);
 
-extern std::string format_response(std::string code, std::string message);
-
-extern void send_message(int sock_fd, std::string message);
 
 
 
 
-extern Recv_msg_t recv_message_server(int sock_fd);
+
+
+
+
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -103,14 +102,14 @@ int main(int argc, char *argv[]) {
 
     while (true) {
         try {
-            sockaddr_in client_addr;
+            sockaddr_in client_addr{};
             int client_len;
             int new_sockfd = accept(sockfd, (sockaddr *) &client_addr, (socklen_t *) &client_len);
             if (new_sockfd < 0) {
                 std::cerr << "Error: Failed to accept socket connection" << std::endl;
                 break;
             }
-            FileSys fs;
+            FileSys fs{};
             fs.mount(new_sockfd);
             Recv_msg_t msg;
             msg.quit = false;
@@ -119,7 +118,7 @@ int main(int argc, char *argv[]) {
                     msg = recv_message_server(new_sockfd);
                     if (msg.quit) break;
                     std::string message = msg.message;
-                    Command command = parse_command(message);
+                    Command_ command = parse_command(message);
                     if (command.type == invalid) send_message(new_sockfd, format_response(command.data, command.data));
                     else if (command.type == noop) send_message(new_sockfd, format_response("200 OK", ""));
                     else exec_command(new_sockfd, fs, command);
@@ -141,7 +140,7 @@ int main(int argc, char *argv[]) {
 }
 
 sockaddr_in get_server_addr(in_port_t port) {
-    sockaddr_in server_addr;
+    sockaddr_in server_addr{};
     bzero((char *) &server_addr, sizeof(server_addr));
     server_addr.sin_family = PF_INET;
     server_addr.sin_port = htons(port);
@@ -151,7 +150,7 @@ sockaddr_in get_server_addr(in_port_t port) {
 }
 
 
-void exec_command(int sock_fd, FileSys &fs, Command command) {
+void exec_command(int sock_fd, FileSys &fs, const Command_& command) {
     CommandType type = command.type;
     const char *file = command.file.c_str();
     const char *data = command.file.c_str();
@@ -192,6 +191,12 @@ void exec_command(int sock_fd, FileSys &fs, Command command) {
             case rm:
                 fs.rm(file);
                 break;
+            case quit:
+                break;
+            case noop:
+                break;
+            case invalid:
+                break;
         }
     }
     catch (const Wrapped_space::FilesSystemException &e) {
@@ -201,8 +206,8 @@ void exec_command(int sock_fd, FileSys &fs, Command command) {
     }
 }
 
-Command parse_command(const std::string &message) {
-    Command cmd;
+Command_ parse_command(const std::string &message) {
+    Command_ cmd;
     std::istringstream ss(message);
     std::string name;
     int token = 0;

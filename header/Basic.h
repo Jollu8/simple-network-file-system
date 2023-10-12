@@ -4,6 +4,8 @@
 
 // my headers;
 #include "Disk.h"
+#include "Disk.h"
+#include "Blocks.h"
 
 class Basic {
 public:

@@ -1,21 +1,15 @@
 #include <cstring>
-#include <iostream>
-#include <unistd.h>
-#include <cmath>
-#include <algorithm>
+
 // my headers;
 
 #include "FileSys.h"
-#include "Basic.h"
-#include "Blocks.h"
-#include "Wrapped.h"
-#include "Helper.h"
+
+//#include "Blocks.h"
+
+
 
 void validate_before_new_entry(DirInode dir, std::string name);
 
-extern std::string format_response(std::string code, std::string message);
-
-extern void send_message(int sock_fd, std::string message);
 
 void FileSys::mount(int sock) {
     bfs.mount();
@@ -145,7 +139,7 @@ void FileSys::append(const char *name, const char *data) {
     short frag_block_id = -1;
     std::array<char, BLOCK_SIZE> fragmented_block_data = {};
     if (has_frag) {
-        int last_block_index = file.get_blocks().size() - 1;
+        auto last_block_index = file.get_blocks().size() - 1;
         auto frag_block = file.get_blocks().at(last_block_index);
         frag_block_id = frag_block.get_id();
         fragmented_block_data = frag_block.get_data();
@@ -166,7 +160,7 @@ void FileSys::append(const char *name, const char *data) {
     for (auto i = 0; i < new_data_str.size(); i += BLOCK_SIZE) {
         std::string cur_data = new_data_str.substr(i, BLOCK_SIZE);
         std::array<char, BLOCK_SIZE> curr_data_block = {};
-        for (auto j = 0; j < cur_data.size(); j++)curr_data_block[i] = cur_data.at(j);
+        for (char j : cur_data)curr_data_block[i] = j;
 
         new_data_vec.emplace_back(curr_data_block);
     }
@@ -185,15 +179,15 @@ void FileSys::append(const char *name, const char *data) {
         }
         for (auto dataBlock: new_dataBlocks)file.add_block(dataBlock);
 
-        file.set_size(new_total_size);
+        file.set_size();
         this->response_ok();
 
     } catch (const Wrapped_space::DiskFullException &e) {
-        file.set_size(original_total_size);
+        file.set_size();
         if (has_frag) DataBlock(frag_block_id).set_data(fragmented_block_data);
         for (auto dataBlock: added_dataBlocks) file.remove_block(dataBlock);
 
-        for (DataBlock dataBlock: new_data_vec)dataBlock.destroy();
+        new_data_vec.clear();
         throw;
     }
 }
@@ -220,7 +214,7 @@ void FileSys::head(const char *name, unsigned int n) {
             }
             unsigned int size_to_get = std::min(file.get_size(), n);
             int num_blocks_to_get = floor(size_to_get / BLOCK_SIZE);
-            int additional_bytes_to_get = size_to_get % BLOCK_SIZE;
+            auto additional_bytes_to_get = size_to_get % BLOCK_SIZE;
 
             if (num_blocks_to_get > file.get_blocks().size())
                 std::cerr << "FileSys::head num_blocks_to_get > file.get_blocks().size()" << std::endl;
@@ -276,7 +270,7 @@ void FileSys::stat(const char *name) {
         message.append("Number of blocks: ");
         message.append(std::to_string(blocks.size() + 1) + '\n');
         message.append("First block: ");
-        if(blocks.size() > 0) message.append(std::to_string(blocks[0].get_id()));
+        if(!blocks.empty()) message.append(std::to_string(blocks[0].get_id()));
         else message.append("0");
 
         response_ok(message);
@@ -290,11 +284,11 @@ void FileSys::set_working_dir(DirInode dir) {
 
 }
 
-DirInode FileSys::get_working_dir() {
+DirInode FileSys::get_working_dir() const{
     return DirInode(this->curr_dir);
 }
 
-void FileSys::response_ok(std::string message) {
+void FileSys::response_ok(const std::string& message) const {
     std::string formatted_message = format_response("200 OK", message);
     send_message(this->fs_sock, formatted_message);
 }

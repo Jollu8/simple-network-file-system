@@ -8,7 +8,7 @@
 
 // my header
 #include "Disk.h"
-#include "Blocks.h"
+
 
 // Открывает файл "имя_файла", представляющий собой диск.  Если файл
 // не существует, файл создается. Возвращает true, если файл создан, и false, если
@@ -24,11 +24,11 @@ bool Disk::mount(const char *fileName) {
     return true;
 }
 
-void Disk::unmount() {
+void Disk::unmount() const {
     close(fd);
 }
 
-void Disk::read_block(int blockNum, void *block) {
+void Disk::read_block(int blockNum, void *block) const {
     off_t offset;
     off_t new_offset;
     ssize_t size_;
@@ -50,7 +50,7 @@ void Disk::read_block(int blockNum, void *block) {
     }
 }
 
-void Disk::write_block(int blockNum, void *block) {
+void Disk::write_block(int blockNum, void *block) const {
     off_t offset;
     off_t new_offset;
     ssize_t size_;

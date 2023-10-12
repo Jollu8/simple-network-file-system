@@ -1,24 +1,11 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <cstring>
-#include <algorithm>
-#include <unordered_map>
+
 
 
 
 //my headers;
-#include "../header/Helper.h"
-#include "../header/Shell.h"
 
+#include "Shell.h"
 
-//macros
 
 
 static const std::string PROMPT_STRING = "NFS";
@@ -26,7 +13,7 @@ const std::string endline = "\n";
 
 
 // Смонтировать сетевую файловую систему с именем сервера и номером порта в формате server:port
-void Shell::mountNFS(std::string fs_loc) {
+void Shell::mountNFS(const std::string& fs_loc) {
     // создать сокет cs_sock и подключить его к серверу и порту, указанному в fs_loc
     // если все вышеперечисленные операции выполнены успешно, установите значение is_mounted в true
 
@@ -43,7 +30,7 @@ void Shell::mountNFS(std::string fs_loc) {
         hostname = token;
         if (getline(ss, token))port = token;
     }
-    addrinfo *addr, hints;
+    addrinfo *addr, hints{};
     bzero(&hints, sizeof(hints));
     hints.ai_family = PF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -80,12 +67,12 @@ void Shell::unmountNFS() {
 
 }
 
-void Shell::mkdir_rpc(std::string d_name) {
+void Shell::mkdir_rpc(const std::string& d_name) {
     std::string cmd = "mkdir " + d_name + endline;
     network_command(cmd, false);
 }
 
-void Shell::cd_rpc(std::string d_name) {
+void Shell::cd_rpc(const std::string& d_name) {
     std::string cmd = "cd " + d_name + endline;
     network_command(cmd, false);
 }
@@ -95,7 +82,7 @@ void Shell::home_rpc() {
     network_command(cmd, false);
 }
 
-void Shell::rmdir_rpc(std::string d_name) {
+void Shell::rmdir_rpc(const std::string& d_name) {
     std::string cmd = "rmdir " + d_name + endline;
     network_command(cmd, false);
 
@@ -106,32 +93,32 @@ void Shell::ls_rpc() {
     network_command(cmd, false);
 }
 
-void Shell::create_rpc(std::string f_name) {
+void Shell::create_rpc(const std::string& f_name) {
     std::string cmd = "create " + f_name + endline;
     network_command(cmd, false);
 }
 
-void Shell::append_rpc(std::string f_name, std::string data) {
+void Shell::append_rpc(std::string f_name, const std::string& data) {
     std::string cmd = "append " + f_name + " " + data + endline;
     network_command(cmd, false);
 }
 
-void Shell::cat_rpc(std::string f_name) {
+void Shell::cat_rpc(const std::string& f_name) {
     std::string cmd = "cat " + f_name + endline;
     network_command(cmd, true);
 }
 
-void Shell::head_rpc(std::string f_name, int n) {
+void Shell::head_rpc(const std::string& f_name, int n) {
     std::string cmd = "head " + f_name + " " + std::to_string(n) + endline;
     network_command(cmd, true);
 }
 
-void Shell::rm_rpc(std::string f_name) {
+void Shell::rm_rpc(const std::string& f_name) {
     std::string cmd = "rm " + f_name + endline;
     network_command(cmd, false);
 }
 
-void Shell::stat_rpc(std::string f_name) {
+void Shell::stat_rpc(const std::string& f_name) {
     std::string cmd = "stat " + f_name + endline;
     network_command(cmd, false);
 
@@ -190,7 +177,7 @@ const std::unordered_map<std::string, int> COMMANDS_FOR_SWITCH_STATEMENT{
         {"quit",   E_QUIT}
 };
 
-bool Shell::execute_command(std::string command_str) {
+bool Shell::execute_command(const std::string& command_str) {
     Command command = parse_command(command_str);
 
     switch (COMMANDS_FOR_SWITCH_STATEMENT.find(command.name)->second) {
@@ -267,7 +254,7 @@ bool Shell::execute_command(std::string command_str) {
     return false;
 }
 
-void Shell::network_command(std::string message, bool can_be_empty) {
+void Shell::network_command(const std::string& message, bool can_be_empty) const {
     std::string formatted_message = message + endline;
     send_message(this->cs_sock, formatted_message);
     Recv_msg_t msg = recv_message_client(this->cs_sock);
@@ -278,14 +265,14 @@ void Shell::network_command(std::string message, bool can_be_empty) {
     std::string response = msg.message;
 
     std::string code, length, body;
-    size_t lenPos = response.find("\n");
+    size_t lenPos = response.find('\n');
     code = response.substr(0, lenPos);
-    size_t bodyPos = response.find("\n", lenPos + 2);
+    size_t bodyPos = response.find('\n', lenPos + 2);
     length = response.substr(lenPos + 2, bodyPos);
     body = response.substr(bodyPos + 4);
 
     std::string output = body;
-    if (body.size() == 0 && (code != "200 OK"))
+    if (body.empty() && (code != "200 OK"))
         // Некоторые серверы полагаются на то, что клиент отобразит "success", а не пошлет
         // его через сокет. В этом случае
         output = std::string("success");
@@ -296,7 +283,7 @@ void Shell::network_command(std::string message, bool can_be_empty) {
 // Разбирает командную строку в структуру command. Возвращаемое имя является пустым
 // для недопустимых командных строк.
 
-Command Shell::parse_command(std::string command_str) {
+Command Shell::parse_command(const std::string& command_str) {
     Command empty = {"", "", ""};
     Command command;
     std::istringstream ss(command_str);
