@@ -23,13 +23,16 @@ set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
         )
 
 # Установка исполняемых файлов
-install(TARGETS nfsserver nfsclient
+install(TARGETS NFS
         RUNTIME DESTINATION bin)
 
 # Настройка CPack
-include(InstallRequiredSystemLibraries)
+#include(InstallRequiredSystemLibraries)
+
+set(CPACK_GENERATOR DEB)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
 set(CPACK_PACKAGE_VERSION_MINOR "0")
+set(CPACK_PACKAGE_CONTACT example@example.com)
 include(CPack)
 
