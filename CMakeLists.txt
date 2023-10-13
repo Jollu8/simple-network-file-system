@@ -29,5 +29,4 @@ set(CPACK_PACKAGE_VERSION_MAJOR "1")
 set(CPACK_PACKAGE_VERSION_MINOR "0")
 install(TARGETS nfsserver nfsclient
         RUNTIME DESTINATION bin)
-
 include(CPack)
