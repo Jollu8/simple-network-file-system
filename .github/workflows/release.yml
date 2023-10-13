@@ -26,6 +26,8 @@ jobs:
         working-directory: build
         run: ctest
 
+      - name: Install
+        run: sudo make install
 
       - name: Package
         run: cpack
